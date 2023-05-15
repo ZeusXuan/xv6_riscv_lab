@@ -10,15 +10,36 @@
 #define STACK_SIZE  8192
 #define MAX_THREAD  4
 
+// Saved registers for thread context switches.
+struct context {
+  uint64 ra;
+  uint64 sp;
+
+  // callee-saved
+  uint64 s0;
+  uint64 s1;
+  uint64 s2;
+  uint64 s3;
+  uint64 s4;
+  uint64 s5;
+  uint64 s6;
+  uint64 s7;
+  uint64 s8;
+  uint64 s9;
+  uint64 s10;
+  uint64 s11;
+};
 
 struct thread {
   char       stack[STACK_SIZE]; /* the thread's stack */
   int        state;             /* FREE, RUNNING, RUNNABLE */
+  struct context  ctx;         /*thread context*/ 
 };
 struct thread all_thread[MAX_THREAD];
+// 指向当前线程的指针
 struct thread *current_thread;
-extern void thread_switch(uint64, uint64);
-              
+extern void thread_switch(struct context* old, struct context* new);
+         
 void 
 thread_init(void)
 {
@@ -37,10 +58,12 @@ thread_schedule(void)
   struct thread *t, *next_thread;
 
   /* Find another runnable thread. */
+  // 指向下一个可运行的线程
   next_thread = 0;
   t = current_thread + 1;
   for(int i = 0; i < MAX_THREAD; i++){
     if(t >= all_thread + MAX_THREAD)
+      // t指向main
       t = all_thread;
     if(t->state == RUNNABLE) {
       next_thread = t;
@@ -50,6 +73,7 @@ thread_schedule(void)
   }
 
   if (next_thread == 0) {
+    // 没有可调度的线程
     printf("thread_schedule: no runnable threads\n");
     exit(-1);
   }
@@ -58,10 +82,7 @@ thread_schedule(void)
     next_thread->state = RUNNING;
     t = current_thread;
     current_thread = next_thread;
-    /* YOUR CODE HERE
-     * Invoke thread_switch to switch from t to next_thread:
-     * thread_switch(??, ??);
-     */
+    thread_switch(&t->ctx,&current_thread->ctx);
   } else
     next_thread = 0;
 }
@@ -75,7 +96,12 @@ thread_create(void (*func)())
     if (t->state == FREE) break;
   }
   t->state = RUNNABLE;
-  // YOUR CODE HERE
+  // 返回地址,thread_switch 的结尾会返回到 ra,从而运行线程代码
+  t->ctx.ra = (uint64)func;
+  // 栈指针       
+  t->ctx.sp = (uint64)&t->stack + (STACK_SIZE - 1);  
+  // 将线程的栈指针指向其独立的栈，注意到栈的生长是从高地址到低地址，所以
+  // 要将 sp 设置为指向 stack 的最高地址
 }
 
 void 
@@ -85,6 +111,7 @@ thread_yield(void)
   thread_schedule();
 }
 
+// 告诉编译器对该变量不做优化，都会直接从变量内存地址中读取数据，从而实现多线程之间的共享
 volatile int a_started, b_started, c_started;
 volatile int a_n, b_n, c_n;
 

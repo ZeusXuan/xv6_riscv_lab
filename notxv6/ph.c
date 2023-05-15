@@ -16,6 +16,8 @@ struct entry {
 struct entry *table[NBUCKET];
 int keys[NKEYS];
 int nthread = 1;
+// 定义互斥锁
+pthread_mutex_t locks[NBUCKET] = { PTHREAD_MUTEX_INITIALIZER }; // 每个散列桶一把锁
 
 
 double
@@ -29,6 +31,7 @@ now()
 static void 
 insert(int key, int value, struct entry **p, struct entry *n)
 {
+  // 头插法
   struct entry *e = malloc(sizeof(struct entry));
   e->key = key;
   e->value = value;
@@ -42,8 +45,10 @@ void put(int key, int value)
   int i = key % NBUCKET;
 
   // is the key already present?
+  pthread_mutex_lock(&locks[i]);
   struct entry *e = 0;
   for (e = table[i]; e != 0; e = e->next) {
+    // 已经存在向对应的key
     if (e->key == key)
       break;
   }
@@ -51,9 +56,11 @@ void put(int key, int value)
     // update the existing key.
     e->value = value;
   } else {
+    // 创建新的键值对
     // the new is new.
     insert(key, value, &table[i], table[i]);
   }
+  pthread_mutex_unlock(&locks[i]);
 
 }
 
@@ -62,11 +69,13 @@ get(int key)
 {
   int i = key % NBUCKET;
 
-
+  pthread_mutex_lock(&locks[i]);
+  // 获取key相对应的value
   struct entry *e = 0;
   for (e = table[i]; e != 0; e = e->next) {
     if (e->key == key) break;
   }
+  pthread_mutex_unlock(&locks[i]);
 
   return e;
 }
@@ -111,16 +120,22 @@ main(int argc, char *argv[])
     exit(-1);
   }
   nthread = atoi(argv[1]);
+  // tha为进程标识符地址
   tha = malloc(sizeof(pthread_t) * nthread);
   srandom(0);
   assert(NKEYS % nthread == 0);
   for (int i = 0; i < NKEYS; i++) {
     keys[i] = random();
   }
+  // 初始化互斥锁
+  for(int i=0; i<NBUCKET; i++) {
+    pthread_mutex_init(&locks[i], NULL); 
+  }
 
   //
   // first the puts
   //
+  // 获取当前时间
   t0 = now();
   for(int i = 0; i < nthread; i++) {
     assert(pthread_create(&tha[i], NULL, put_thread, (void *) (long) i) == 0);
