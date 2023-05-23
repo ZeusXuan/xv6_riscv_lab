@@ -1,5 +1,6 @@
 //
 // E1000 hardware definitions: registers and DMA ring format.
+// QEMU模拟82540EM
 // from the Intel 82540EP/EM &c manual.
 //
 
@@ -97,6 +98,7 @@
 #define E1000_TXD_STAT_DD    0x00000001 /* Descriptor Done */
 
 // [E1000 3.3.3]
+// Transmit Descriptor Format
 struct tx_desc
 {
   uint64 addr;
@@ -113,6 +115,7 @@ struct tx_desc
 #define E1000_RXD_STAT_EOP      0x02    /* End of Packet */
 
 // [E1000 3.2.3]
+// Receive Descriptor Format
 struct rx_desc
 {
   uint64 addr;       /* Address of the descriptor's data buffer */

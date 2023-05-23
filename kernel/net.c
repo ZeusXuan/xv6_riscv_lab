@@ -11,7 +11,9 @@
 #include "net.h"
 #include "defs.h"
 
+// 10.0.2.15为qemu中的本地ip
 static uint32 local_ip = MAKE_IP_ADDR(10, 0, 2, 15); // qemu's idea of the guest IP
+// 本地mac地址
 static uint8 local_mac[ETHADDR_LEN] = { 0x52, 0x54, 0x00, 0x12, 0x34, 0x56 };
 static uint8 broadcast_mac[ETHADDR_LEN] = { 0xFF, 0XFF, 0XFF, 0XFF, 0XFF, 0XFF };
 
@@ -86,10 +88,12 @@ mbuffree(struct mbuf *m)
   kfree(m);
 }
 
+// 将mbuf放入队里的最后
 // Pushes an mbuf to the end of the queue.
 void
 mbufq_pushtail(struct mbufq *q, struct mbuf *m)
 {
+  // 下一个mbuff设置为空
   m->next = 0;
   if (!q->head){
     q->head = q->tail = m;
@@ -99,6 +103,7 @@ mbufq_pushtail(struct mbufq *q, struct mbuf *m)
   q->tail = m;
 }
 
+// mbuf将其从队头弹出
 // Pops an mbuf from the start of the queue.
 struct mbuf *
 mbufq_pophead(struct mbufq *q)
@@ -110,6 +115,7 @@ mbufq_pophead(struct mbufq *q)
   return head;
 }
 
+// 判断是否为空
 // Returns one (nonzero) if the queue is empty.
 int
 mbufq_empty(struct mbufq *q)
@@ -340,6 +346,7 @@ net_rx_ip(struct mbuf *m)
   if (htonl(iphdr->ip_dst) != local_ip)
     goto fail;
   // can only support UDP
+  // 这里只支持UDP协议
   if (iphdr->ip_p != IPPROTO_UDP)
     goto fail;
 
@@ -365,6 +372,7 @@ void net_rx(struct mbuf *m)
   }
 
   type = ntohs(ethhdr->type);
+  // 判断上层协议的类型
   if (type == ETHTYPE_IP)
     net_rx_ip(m);
   else if (type == ETHTYPE_ARP)

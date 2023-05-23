@@ -3,6 +3,7 @@
 //
 
 #define MBUF_SIZE              2048
+// mbuf 的固定头部空间
 #define MBUF_DEFAULT_HEADROOM  128
 
 struct mbuf {
@@ -76,6 +77,7 @@ static inline uint32 bswapl(uint32 val)
 
 #define ETHADDR_LEN 6
 
+// 以太网头部
 // an Ethernet packet header (start of the packet).
 struct eth {
   uint8  dhost[ETHADDR_LEN];
